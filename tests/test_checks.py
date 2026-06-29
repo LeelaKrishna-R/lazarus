@@ -68,3 +68,14 @@ def test_service_inactive_not_ok():
         runners={"service": lambda address, user, command, timeout: (3, "inactive")},
     )
     assert res.ok is False
+
+
+def test_service_name_is_shell_quoted():
+    captured = {}
+
+    def runner(address, user, command, timeout):
+        captured["command"] = command
+        return (0, "active")
+
+    run_check(host(), Check(type="service", name="evil; rm -rf /"), runners={"service": runner})
+    assert captured["command"] == "systemctl is-active 'evil; rm -rf /'"

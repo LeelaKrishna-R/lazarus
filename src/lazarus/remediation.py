@@ -52,7 +52,11 @@ def remediate(
         return RemediationResult(executed=False, command=rule.action)
     runner = runner or ssh_run
     logger.info("remediating %s on %s: %s", incident.type, host.name, rule.action)
-    code, output = runner(host.address, host.ssh_user, rule.action, SSH_TIMEOUT)
     incident.attempts += 1
     incident.last_attempt = now
+    try:
+        code, output = runner(host.address, host.ssh_user, rule.action, SSH_TIMEOUT)
+    except Exception as exc:
+        logger.warning("remediation failed on %s: %s", host.name, exc)
+        return RemediationResult(executed=False, command=rule.action, output=str(exc))
     return RemediationResult(executed=True, command=rule.action, returncode=code, output=output)

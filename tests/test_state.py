@@ -53,3 +53,9 @@ def test_load_state_restores_pending_streak(tmp_path):
 
 def test_load_state_missing_file_returns_empty(tmp_path):
     assert load_state(tmp_path / "nope.json") == {}
+
+
+def test_load_state_ignores_corrupt_file(tmp_path):
+    path = tmp_path / "state.json"
+    path.write_text("{ this is not valid json")
+    assert load_state(path) == {}

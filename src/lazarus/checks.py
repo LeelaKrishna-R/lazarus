@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import shlex
 import socket
 import subprocess
 import time
@@ -76,9 +77,8 @@ def _check_http(host: Host, check: Check, runner: Callable) -> CheckResult:
 
 def _check_service(host: Host, check: Check, runner: Callable) -> CheckResult:
     try:
-        code, output = runner(
-            host.address, host.ssh_user, f"systemctl is-active {check.name}", check.timeout_seconds
-        )
+        command = f"systemctl is-active {shlex.quote(check.name or '')}"
+        code, output = runner(host.address, host.ssh_user, command, check.timeout_seconds)
     except Exception as exc:
         return CheckResult(type=check.type, ok=False, detail={"name": check.name}, error=str(exc))
     return CheckResult(type=check.type, ok=code == 0, detail={"name": check.name, "output": output})

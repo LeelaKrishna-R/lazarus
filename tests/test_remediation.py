@@ -62,3 +62,16 @@ def test_remediate_executes_and_counts():
     assert res.executed is True
     assert inc.attempts == 1
     assert inc.last_attempt == 5.0
+
+
+def test_remediate_survives_runner_exception():
+    host, rule = host_with_rule()
+    inc = incident()
+
+    def boom(address, user, command, timeout):
+        raise TimeoutError("timed out")
+
+    res = remediate(host, inc, rule, now=5.0, dry_run=False, runner=boom)
+    assert res.executed is False
+    assert inc.attempts == 1
+    assert inc.last_attempt == 5.0

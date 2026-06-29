@@ -1,12 +1,15 @@
 from __future__ import annotations
 
 import json
+import logging
 import os
 from dataclasses import asdict
 from pathlib import Path
 
 from lazarus.checks import CheckResult
 from lazarus.detection import HostState, Incident
+
+logger = logging.getLogger("lazarus.state")
 
 
 def _host_dict(state: HostState, results: list[CheckResult]) -> dict:
@@ -40,16 +43,20 @@ def load_state(path: str | Path) -> dict[str, HostState]:
     path = Path(path)
     if not path.exists():
         return {}
-    data = json.loads(path.read_text())
-    states: dict[str, HostState] = {}
-    for host in data.get("hosts", []):
-        state = HostState(
-            name=host["name"],
-            status=host.get("status", "healthy"),
-            confirmed_ok=host.get("confirmed_ok", {}),
-            pending=host.get("pending", {}),
-        )
-        for inc in host.get("open_incidents", []):
-            state.incidents[inc["check_key"]] = Incident(**inc)
-        states[host["name"]] = state
-    return states
+    try:
+        data = json.loads(path.read_text())
+        states: dict[str, HostState] = {}
+        for host in data.get("hosts", []):
+            state = HostState(
+                name=host["name"],
+                status=host.get("status", "healthy"),
+                confirmed_ok=host.get("confirmed_ok", {}),
+                pending=host.get("pending", {}),
+            )
+            for inc in host.get("open_incidents", []):
+                state.incidents[inc["check_key"]] = Incident(**inc)
+            states[host["name"]] = state
+        return states
+    except (OSError, ValueError, KeyError, TypeError) as exc:
+        logger.warning("ignoring unreadable state file %s: %s", path, exc)
+        return {}
