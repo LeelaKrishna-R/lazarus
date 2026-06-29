@@ -85,11 +85,14 @@ def _parse_check(raw: dict) -> Check:
 
 
 def _parse_remediation(raw: dict) -> Remediation:
-    for required in ("on", "action"):
-        if raw.get(required) is None:
-            raise ConfigError(f"remediation requires a {required!r} field")
+    # YAML 1.1 parses a bare `on` key as boolean True, so accept either form.
+    on = raw.get("on", raw.get(True))
+    if on is None:
+        raise ConfigError("remediation requires an 'on' field")
+    if raw.get("action") is None:
+        raise ConfigError("remediation requires an 'action' field")
     return Remediation(
-        on=raw["on"],
+        on=on,
         action=raw["action"],
         service=raw.get("service"),
         max_attempts=int(raw.get("max_attempts", 1)),

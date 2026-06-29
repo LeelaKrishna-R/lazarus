@@ -83,6 +83,26 @@ def test_service_check_requires_name(tmp_path):
         load_config(p)
 
 
+def test_remediation_on_key_survives_yaml_bool_quirk(tmp_path):
+    p = write(
+        tmp_path,
+        """
+        hosts:
+          - name: web
+            address: 10.0.0.1
+            checks:
+              - type: service
+                name: friday
+            remediation:
+              - on: service_down
+                action: systemctl restart friday
+    """,
+    )
+    cfg = load_config(p)
+    assert cfg.hosts[0].remediation[0].on == "service_down"
+    assert cfg.hosts[0].remediation[0].action == "systemctl restart friday"
+
+
 def test_host_with_no_checks_is_rejected(tmp_path):
     p = write(
         tmp_path,
