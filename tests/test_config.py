@@ -53,6 +53,25 @@ def test_expands_env_in_webhook(tmp_path, monkeypatch):
     assert cfg.alerting.webhook == "https://example.com/hook"
 
 
+def test_missing_webhook_env_disables_alerting_without_failing(tmp_path, monkeypatch):
+    monkeypatch.delenv("MISSING_HOOK", raising=False)
+    p = write(
+        tmp_path,
+        """
+        alerting:
+          webhook: ${MISSING_HOOK}
+        hosts:
+          - name: web
+            address: 10.0.0.1
+            checks:
+              - type: reachable
+                port: 80
+    """,
+    )
+    cfg = load_config(p)
+    assert cfg.alerting.webhook is None
+
+
 def test_rejects_unknown_check_type(tmp_path):
     p = write(
         tmp_path,

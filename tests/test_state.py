@@ -43,5 +43,13 @@ def test_load_state_restores_status_and_incidents(tmp_path):
     assert restored["web"].incidents["reachable:80"].last_attempt == 5.0
 
 
+def test_load_state_restores_pending_streak(tmp_path):
+    path = tmp_path / "state.json"
+    st = HostState(name="web", status="healthy", pending={"reachable:80": 1})
+    write_state(path, {"web": st}, {"web": []}, "2026-06-29T00:00:00Z")
+    restored = load_state(path)
+    assert restored["web"].pending == {"reachable:80": 1}
+
+
 def test_load_state_missing_file_returns_empty(tmp_path):
     assert load_state(tmp_path / "nope.json") == {}

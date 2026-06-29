@@ -1,11 +1,14 @@
 from __future__ import annotations
 
+import logging
 import os
 import re
 from dataclasses import dataclass, field
 from pathlib import Path
 
 import yaml
+
+logger = logging.getLogger("lazarus.config")
 
 
 class ConfigError(Exception):
@@ -129,7 +132,11 @@ def load_config(path: str | Path) -> Config:
     hosts = [_parse_host(h) for h in raw["hosts"]]
     webhook = (raw.get("alerting") or {}).get("webhook")
     if isinstance(webhook, str):
-        webhook = _expand_env(webhook)
+        try:
+            webhook = _expand_env(webhook)
+        except ConfigError as exc:
+            logger.warning("alerting disabled: %s", exc)
+            webhook = None
     return Config(
         hosts=hosts,
         poll_interval_seconds=float(raw.get("poll_interval_seconds", 60.0)),

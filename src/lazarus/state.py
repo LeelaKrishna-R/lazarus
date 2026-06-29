@@ -14,6 +14,7 @@ def _host_dict(state: HostState, results: list[CheckResult]) -> dict:
         "name": state.name,
         "status": state.status,
         "confirmed_ok": state.confirmed_ok,
+        "pending": state.pending,
         "checks": [asdict(r) for r in results],
         "open_incidents": [asdict(i) for i in state.incidents.values()],
     }
@@ -46,6 +47,7 @@ def load_state(path: str | Path) -> dict[str, HostState]:
             name=host["name"],
             status=host.get("status", "healthy"),
             confirmed_ok=host.get("confirmed_ok", {}),
+            pending=host.get("pending", {}),
         )
         for inc in host.get("open_incidents", []):
             state.incidents[inc["check_key"]] = Incident(**inc)
