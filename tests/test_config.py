@@ -122,6 +122,94 @@ def test_remediation_on_key_survives_yaml_bool_quirk(tmp_path):
     assert cfg.hosts[0].remediation[0].action == "systemctl restart friday"
 
 
+def test_rejects_non_positive_timeout(tmp_path):
+    p = write(
+        tmp_path,
+        """
+        hosts:
+          - name: web
+            address: 10.0.0.1
+            checks:
+              - type: reachable
+                port: 80
+                timeout_seconds: 0
+    """,
+    )
+    with pytest.raises(ConfigError, match="timeout_seconds"):
+        load_config(p)
+
+
+def test_rejects_non_numeric_timeout(tmp_path):
+    p = write(
+        tmp_path,
+        """
+        hosts:
+          - name: web
+            address: 10.0.0.1
+            checks:
+              - type: reachable
+                port: 80
+                timeout_seconds: soon
+    """,
+    )
+    with pytest.raises(ConfigError, match="timeout_seconds"):
+        load_config(p)
+
+
+def test_rejects_non_positive_poll_interval(tmp_path):
+    p = write(
+        tmp_path,
+        """
+        poll_interval_seconds: -5
+        hosts:
+          - name: web
+            address: 10.0.0.1
+            checks:
+              - type: reachable
+                port: 80
+    """,
+    )
+    with pytest.raises(ConfigError, match="poll_interval_seconds"):
+        load_config(p)
+
+
+def test_rejects_debounce_below_one(tmp_path):
+    p = write(
+        tmp_path,
+        """
+        debounce: 0
+        hosts:
+          - name: web
+            address: 10.0.0.1
+            checks:
+              - type: reachable
+                port: 80
+    """,
+    )
+    with pytest.raises(ConfigError, match="debounce"):
+        load_config(p)
+
+
+def test_rejects_negative_cooldown(tmp_path):
+    p = write(
+        tmp_path,
+        """
+        hosts:
+          - name: web
+            address: 10.0.0.1
+            checks:
+              - type: reachable
+                port: 80
+            remediation:
+              - on: service_down
+                action: systemctl restart x
+                cooldown_seconds: -1
+    """,
+    )
+    with pytest.raises(ConfigError, match="cooldown_seconds"):
+        load_config(p)
+
+
 def test_host_with_no_checks_is_rejected(tmp_path):
     p = write(
         tmp_path,

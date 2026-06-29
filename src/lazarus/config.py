@@ -22,7 +22,6 @@ class Check:
     port: int | None = None
     url: str | None = None
     name: str | None = None
-    via: str = "ssh"
 
 
 @dataclass
@@ -70,6 +69,27 @@ def _expand_env(value: str) -> str:
     return _ENV_PATTERN.sub(replace, value)
 
 
+def _float_field(raw: dict, key: str, default: float, *, minimum: float, inclusive: bool) -> float:
+    try:
+        value = float(raw.get(key, default))
+    except (TypeError, ValueError):
+        raise ConfigError(f"{key} must be a number, got {raw.get(key)!r}") from None
+    if value < minimum or (value == minimum and not inclusive):
+        bound = f">= {minimum}" if inclusive else f"> {minimum}"
+        raise ConfigError(f"{key} must be {bound}, got {value}")
+    return value
+
+
+def _int_field(raw: dict, key: str, default: int, *, minimum: int) -> int:
+    try:
+        value = int(raw.get(key, default))
+    except (TypeError, ValueError):
+        raise ConfigError(f"{key} must be an integer, got {raw.get(key)!r}") from None
+    if value < minimum:
+        raise ConfigError(f"{key} must be >= {minimum}, got {value}")
+    return value
+
+
 def _parse_check(raw: dict) -> Check:
     ctype = raw.get("type")
     if ctype not in _REQUIRED_FIELD:
@@ -79,11 +99,10 @@ def _parse_check(raw: dict) -> Check:
         raise ConfigError(f"{ctype} check requires a {required!r} field")
     return Check(
         type=ctype,
-        timeout_seconds=float(raw.get("timeout_seconds", 5.0)),
+        timeout_seconds=_float_field(raw, "timeout_seconds", 5.0, minimum=0.0, inclusive=False),
         port=raw.get("port"),
         url=raw.get("url"),
         name=raw.get("name"),
-        via=raw.get("via", "ssh"),
     )
 
 
@@ -98,8 +117,8 @@ def _parse_remediation(raw: dict) -> Remediation:
         on=on,
         action=raw["action"],
         service=raw.get("service"),
-        max_attempts=int(raw.get("max_attempts", 1)),
-        cooldown_seconds=float(raw.get("cooldown_seconds", 300.0)),
+        max_attempts=_int_field(raw, "max_attempts", 1, minimum=1),
+        cooldown_seconds=_float_field(raw, "cooldown_seconds", 300.0, minimum=0.0, inclusive=True),
     )
 
 
@@ -139,7 +158,9 @@ def load_config(path: str | Path) -> Config:
             webhook = None
     return Config(
         hosts=hosts,
-        poll_interval_seconds=float(raw.get("poll_interval_seconds", 60.0)),
+        poll_interval_seconds=_float_field(
+            raw, "poll_interval_seconds", 60.0, minimum=0.0, inclusive=False
+        ),
         alerting=Alerting(webhook=webhook),
-        debounce=int(raw.get("debounce", 2)),
+        debounce=_int_field(raw, "debounce", 2, minimum=1),
     )
