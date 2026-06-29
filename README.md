@@ -28,6 +28,28 @@ lazarus daemon --config examples/config.yaml
 Exit codes (handy for cron): `0` all healthy · `1` one or more open incidents ·
 `2` config/usage error.
 
+## Demo
+
+With `debounce: 2`, a single failed poll doesn't flip a host — the streak has to
+build, so a transient blip is ignored. The second consecutive failure opens the
+incidents and (in `--dry-run`) shows the remediation it *would* run:
+
+```
+$ lazarus run-once --config examples/config.yaml --dry-run   # run 1
+INFO lazarus host friday-nuc: healthy
+
+$ lazarus run-once --config examples/config.yaml --dry-run   # run 2
+INFO lazarus opened host_unreachable on friday-nuc
+INFO lazarus opened http_unhealthy on friday-nuc
+INFO lazarus opened service_down on friday-nuc
+INFO lazarus.remediation [dry-run] would run on friday-nuc: systemctl restart friday
+INFO lazarus host friday-nuc: down            # exit code 1
+```
+
+No real hosts needed — the example points at an unreachable address, so `--dry-run`
+exercises the whole pipeline (checks → debounce → incidents → would-remediate)
+without touching anything.
+
 ## Configuration
 
 See [`examples/config.yaml`](examples/config.yaml). Each host has checks and an
