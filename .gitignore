@@ -1,0 +1,12 @@
+__pycache__/
+*.pyc
+.venv/
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+lazarus-state.json
+
+# local-only — kept off the public repo (no AI-process artifacts)
+CLAUDE.md
+.claude/
+docs/superpowers/
