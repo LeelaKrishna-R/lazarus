@@ -1,5 +1,7 @@
 # lazarus
 
+[![CI](https://github.com/LeelaKrishna-R/lazarus/actions/workflows/ci.yml/badge.svg)](https://github.com/LeelaKrishna-R/lazarus/actions/workflows/ci.yml)
+
 **Self-healing monitor for homelab/edge infra — detects failures, auto-remediates, alerts.**
 
 `lazarus` polls a list of hosts from a YAML config, decides whether each is
