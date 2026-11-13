@@ -49,6 +49,7 @@ DEFAULT_RUNNERS: dict[str, Callable] = {
     "reachable": tcp_connect,
     "http_health": http_get_status,
     "service": ssh_run,
+    "disk": ssh_run,
 }
 
 
@@ -84,10 +85,38 @@ def _check_service(host: Host, check: Check, runner: Callable) -> CheckResult:
     return CheckResult(type=check.type, ok=code == 0, detail={"name": check.name, "output": output})
 
 
+def _used_percent(df_output: str) -> int | None:
+    """The Capacity column of `df -P` for the one filesystem asked about."""
+    lines = [ln for ln in df_output.splitlines() if ln.strip()]
+    if len(lines) < 2:
+        return None
+    for part in lines[-1].split():
+        if part.endswith("%") and part[:-1].isdigit():
+            return int(part[:-1])
+    return None
+
+
+def _check_disk(host: Host, check: Check, runner: Callable) -> CheckResult:
+    detail = {"path": check.path}
+    try:
+        command = f"df -P {shlex.quote(check.path or '')}"
+        code, output = runner(host.address, host.ssh_user, command, check.timeout_seconds)
+    except Exception as exc:
+        return CheckResult(type=check.type, ok=False, detail=detail, error=str(exc))
+    used = _used_percent(output) if code == 0 else None
+    if used is None:
+        return CheckResult(
+            type=check.type, ok=False, detail=detail, error=output or f"df exited {code}"
+        )
+    detail.update(used_percent=used, max_percent=check.max_percent)
+    return CheckResult(type=check.type, ok=used <= check.max_percent, detail=detail)
+
+
 _DISPATCH: dict[str, Callable[[Host, Check, Callable], CheckResult]] = {
     "reachable": _check_reachable,
     "http_health": _check_http,
     "service": _check_service,
+    "disk": _check_disk,
 }
 
 

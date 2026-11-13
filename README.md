@@ -76,6 +76,9 @@ hosts:
       - type: service        # ssh <host> systemctl is-active <name>
         name: friday
         timeout_seconds: 10
+      - type: disk           # ssh <host> df -P <path>; fails past max_percent (default 90)
+        path: /
+        max_percent: 90
     remediation:
       - on: service_down
         service: friday
@@ -117,7 +120,7 @@ database, no HA/clustering, no plugins. It is a focused tool, not a platform.
 ## Roadmap
 
 - Prometheus metrics exporter
-- More check types (disk/CPU thresholds)
+- More check types (CPU and memory thresholds; disk shipped as `type: disk`)
 - Read-only web status page
 - Pluggable remediation handlers
 - Async polling for large fleets

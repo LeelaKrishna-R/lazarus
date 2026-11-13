@@ -16,6 +16,9 @@ hosts:
       - type: service
         name: friday
         timeout_seconds: 10
+      - type: disk           # ssh <host> df -P <path>; over max_percent = unhealthy
+        path: /
+        max_percent: 90
     remediation:
       - on: service_down
         service: friday

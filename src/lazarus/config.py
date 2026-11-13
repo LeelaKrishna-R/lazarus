@@ -22,6 +22,8 @@ class Check:
     port: int | None = None
     url: str | None = None
     name: str | None = None
+    path: str | None = None
+    max_percent: float = 90.0
 
 
 @dataclass
@@ -56,7 +58,7 @@ class Config:
 
 
 _ENV_PATTERN = re.compile(r"\$\{(\w+)\}")
-_REQUIRED_FIELD = {"reachable": "port", "http_health": "url", "service": "name"}
+_REQUIRED_FIELD = {"reachable": "port", "http_health": "url", "service": "name", "disk": "path"}
 
 
 def _expand_env(value: str) -> str:
@@ -103,7 +105,16 @@ def _parse_check(raw: dict) -> Check:
         port=raw.get("port"),
         url=raw.get("url"),
         name=raw.get("name"),
+        path=raw.get("path"),
+        max_percent=_percent_field(raw, "max_percent", 90.0),
     )
+
+
+def _percent_field(raw: dict, key: str, default: float) -> float:
+    value = _float_field(raw, key, default, minimum=0.0, inclusive=False)
+    if value > 100:
+        raise ConfigError(f"{key} must be <= 100, got {value}")
+    return value
 
 
 def _parse_remediation(raw: dict) -> Remediation:

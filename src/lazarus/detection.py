@@ -9,6 +9,7 @@ INCIDENT_TYPES = {
     "reachable": "host_unreachable",
     "http_health": "http_unhealthy",
     "service": "service_down",
+    "disk": "disk_full",
 }
 
 
@@ -39,12 +40,14 @@ class HostState:
 
 
 def check_key(check: Check) -> str:
-    return f"{check.type}:{check.name or check.url or check.port or ''}"
+    return f"{check.type}:{check.name or check.path or check.url or check.port or ''}"
 
 
 def _target(check: Check) -> str | None:
     if check.type == "service":
         return check.name
+    if check.type == "disk":
+        return check.path
     return check.url or (str(check.port) if check.port else None)
 
 
