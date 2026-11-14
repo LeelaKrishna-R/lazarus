@@ -21,6 +21,8 @@ hosts:
         max_percent: 90
       - type: memory         # ssh <host> cat /proc/meminfo; used past max_percent = unhealthy
         max_percent: 90
+      - type: load           # ssh <host> 5-minute load as a percent of its cores
+        max_percent: 90
     remediation:
       - on: service_down
         service: friday

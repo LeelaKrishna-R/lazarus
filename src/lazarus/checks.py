@@ -51,6 +51,7 @@ DEFAULT_RUNNERS: dict[str, Callable] = {
     "service": ssh_run,
     "disk": ssh_run,
     "memory": ssh_run,
+    "load": ssh_run,
 }
 
 
@@ -144,12 +145,45 @@ def _check_memory(host: Host, check: Check, runner: Callable) -> CheckResult:
     return CheckResult(type=check.type, ok=used <= check.max_percent, detail=detail)
 
 
+def _load_percent(output: str) -> tuple[float, int, int] | None:
+    """(5-minute load, cores, load as a percent of the cores) from `cat /proc/loadavg; nproc`."""
+    lines = [ln.split() for ln in output.splitlines() if ln.strip()]
+    try:
+        load5, cores = float(lines[0][1]), int(lines[1][0])
+    except (IndexError, ValueError):
+        return None
+    if cores < 1:
+        return None
+    return load5, cores, round(load5 * 100 / cores)
+
+
+def _check_load(host: Host, check: Check, runner: Callable) -> CheckResult:
+    try:
+        code, output = runner(
+            host.address, host.ssh_user, "cat /proc/loadavg; nproc", check.timeout_seconds
+        )
+    except Exception as exc:
+        return CheckResult(type=check.type, ok=False, error=str(exc))
+    got = _load_percent(output) if code == 0 else None
+    if got is None:
+        return CheckResult(type=check.type, ok=False, error=output or f"exit {code}")
+    load5, cores, pct = got
+    detail = {
+        "load_5m": load5,
+        "cores": cores,
+        "used_percent": pct,
+        "max_percent": check.max_percent,
+    }
+    return CheckResult(type=check.type, ok=pct <= check.max_percent, detail=detail)
+
+
 _DISPATCH: dict[str, Callable[[Host, Check, Callable], CheckResult]] = {
     "reachable": _check_reachable,
     "http_health": _check_http,
     "service": _check_service,
     "disk": _check_disk,
     "memory": _check_memory,
+    "load": _check_load,
 }
 
 

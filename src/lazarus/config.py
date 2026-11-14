@@ -64,6 +64,7 @@ _REQUIRED_FIELD = {
     "service": "name",
     "disk": "path",
     "memory": None,
+    "load": None,
 }
 
 

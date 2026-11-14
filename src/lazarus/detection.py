@@ -11,6 +11,7 @@ INCIDENT_TYPES = {
     "service": "service_down",
     "disk": "disk_full",
     "memory": "memory_high",
+    "load": "load_high",
 }
 
 

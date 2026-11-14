@@ -81,6 +81,8 @@ hosts:
         max_percent: 90
       - type: memory         # ssh <host> cat /proc/meminfo; MemTotal less MemAvailable past max_percent
         max_percent: 90
+      - type: load           # ssh <host> 5-minute load as a percent of its cores (100 = load equals cores)
+        max_percent: 90
     remediation:
       - on: service_down
         service: friday
@@ -123,7 +125,7 @@ database, no HA/clustering, no plugins. It is a focused tool, not a platform.
 ## Roadmap
 
 - Prometheus metrics exporter
-- A CPU / load threshold check (disk and memory shipped as `type: disk` and `type: memory`)
+- A threshold on swap use (disk, memory and load shipped as `type: disk`, `memory` and `load`)
 - Read-only web status page
 - Pluggable remediation handlers
 - Async polling for large fleets
