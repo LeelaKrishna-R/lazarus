@@ -22,6 +22,7 @@ class Incident:
     opened_at: float
     attempts: int = 0
     last_attempt: float | None = None
+    reason: str | None = None
 
 
 @dataclass
@@ -41,6 +42,16 @@ class HostState:
 
 def check_key(check: Check) -> str:
     return f"{check.type}:{check.name or check.path or check.url or check.port or ''}"
+
+
+def _reason(result: CheckResult) -> str | None:
+    """Why the check failed, in a few words, for the alert."""
+    d = result.detail or {}
+    if "used_percent" in d:
+        return f"{d['used_percent']}% used, limit {d['max_percent']:g}%"
+    if "status_code" in d:
+        return f"HTTP {d['status_code']}"
+    return result.error or d.get("output") or None
 
 
 def _target(check: Check) -> str | None:
@@ -79,6 +90,7 @@ def evaluate(
                 check_key=key,
                 target=_target(check),
                 opened_at=now,
+                reason=_reason(result),
             )
             state.incidents[key] = incident
             events.append(Event("opened", incident))

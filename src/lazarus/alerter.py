@@ -16,8 +16,11 @@ def format_alert(event: Event) -> dict:
     inc = event.incident
     verb = "RESOLVED" if event.kind == "closed" else "FIRING"
     label = f"{inc.host}: {inc.type}" + (f" ({inc.target})" if inc.target else "")
+    if event.kind == "opened" and inc.reason:
+        label += f": {inc.reason}"
     return {
         "content": f"[{verb}] {label}",
+        "reason": inc.reason,
         "host": inc.host,
         "type": inc.type,
         "target": inc.target,

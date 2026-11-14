@@ -90,8 +90,9 @@ hosts:
 ## Example alert
 
 ```
-[FIRING]   friday-nuc: service_down (friday)
+[FIRING]   friday-nuc: service_down (friday): inactive
 [RESOLVED] friday-nuc: service_down (friday)
+[FIRING]   friday-nuc: disk_full (/): 92% used, limit 90%
 ```
 
 ## Safety
