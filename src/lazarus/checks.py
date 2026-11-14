@@ -50,6 +50,7 @@ DEFAULT_RUNNERS: dict[str, Callable] = {
     "http_health": http_get_status,
     "service": ssh_run,
     "disk": ssh_run,
+    "memory": ssh_run,
 }
 
 
@@ -112,11 +113,40 @@ def _check_disk(host: Host, check: Check, runner: Callable) -> CheckResult:
     return CheckResult(type=check.type, ok=used <= check.max_percent, detail=detail)
 
 
+def _used_memory_percent(meminfo: str) -> int | None:
+    """Memory in use from /proc/meminfo: MemTotal less MemAvailable (what the kernel could free is not "used")."""
+    fields = {}
+    for line in meminfo.splitlines():
+        name, _, rest = line.partition(":")
+        parts = rest.split()
+        if parts and parts[0].isdigit():
+            fields[name.strip()] = int(parts[0])
+    total, available = fields.get("MemTotal"), fields.get("MemAvailable")
+    if not total or available is None:
+        return None
+    return round((total - available) * 100 / total)
+
+
+def _check_memory(host: Host, check: Check, runner: Callable) -> CheckResult:
+    try:
+        code, output = runner(
+            host.address, host.ssh_user, "cat /proc/meminfo", check.timeout_seconds
+        )
+    except Exception as exc:
+        return CheckResult(type=check.type, ok=False, error=str(exc))
+    used = _used_memory_percent(output) if code == 0 else None
+    if used is None:
+        return CheckResult(type=check.type, ok=False, error=output or f"exit {code}")
+    detail = {"used_percent": used, "max_percent": check.max_percent}
+    return CheckResult(type=check.type, ok=used <= check.max_percent, detail=detail)
+
+
 _DISPATCH: dict[str, Callable[[Host, Check, Callable], CheckResult]] = {
     "reachable": _check_reachable,
     "http_health": _check_http,
     "service": _check_service,
     "disk": _check_disk,
+    "memory": _check_memory,
 }
 
 

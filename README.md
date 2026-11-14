@@ -79,6 +79,8 @@ hosts:
       - type: disk           # ssh <host> df -P <path>; fails past max_percent (default 90)
         path: /
         max_percent: 90
+      - type: memory         # ssh <host> cat /proc/meminfo; MemTotal less MemAvailable past max_percent
+        max_percent: 90
     remediation:
       - on: service_down
         service: friday
@@ -121,7 +123,7 @@ database, no HA/clustering, no plugins. It is a focused tool, not a platform.
 ## Roadmap
 
 - Prometheus metrics exporter
-- More check types (CPU and memory thresholds; disk shipped as `type: disk`)
+- A CPU / load threshold check (disk and memory shipped as `type: disk` and `type: memory`)
 - Read-only web status page
 - Pluggable remediation handlers
 - Async polling for large fleets

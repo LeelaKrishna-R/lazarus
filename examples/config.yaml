@@ -19,6 +19,8 @@ hosts:
       - type: disk           # ssh <host> df -P <path>; over max_percent = unhealthy
         path: /
         max_percent: 90
+      - type: memory         # ssh <host> cat /proc/meminfo; used past max_percent = unhealthy
+        max_percent: 90
     remediation:
       - on: service_down
         service: friday

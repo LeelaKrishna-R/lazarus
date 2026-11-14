@@ -10,6 +10,7 @@ INCIDENT_TYPES = {
     "http_health": "http_unhealthy",
     "service": "service_down",
     "disk": "disk_full",
+    "memory": "memory_high",
 }
 
 

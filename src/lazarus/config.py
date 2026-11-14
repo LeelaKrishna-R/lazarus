@@ -58,7 +58,13 @@ class Config:
 
 
 _ENV_PATTERN = re.compile(r"\$\{(\w+)\}")
-_REQUIRED_FIELD = {"reachable": "port", "http_health": "url", "service": "name", "disk": "path"}
+_REQUIRED_FIELD = {
+    "reachable": "port",
+    "http_health": "url",
+    "service": "name",
+    "disk": "path",
+    "memory": None,
+}
 
 
 def _expand_env(value: str) -> str:
@@ -97,7 +103,7 @@ def _parse_check(raw: dict) -> Check:
     if ctype not in _REQUIRED_FIELD:
         raise ConfigError(f"unknown check type: {ctype!r}")
     required = _REQUIRED_FIELD[ctype]
-    if raw.get(required) is None:
+    if required and raw.get(required) is None:
         raise ConfigError(f"{ctype} check requires a {required!r} field")
     return Check(
         type=ctype,
