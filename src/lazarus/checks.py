@@ -114,7 +114,10 @@ def _check_disk(host: Host, check: Check, runner: Callable) -> CheckResult:
 
 
 def _used_memory_percent(meminfo: str) -> int | None:
-    """Memory in use from /proc/meminfo: MemTotal less MemAvailable (what the kernel could free is not "used")."""
+    """Memory in use from /proc/meminfo: MemTotal less MemAvailable.
+
+    Page cache the kernel could free is not counted as used.
+    """
     fields = {}
     for line in meminfo.splitlines():
         name, _, rest = line.partition(":")

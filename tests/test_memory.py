@@ -50,12 +50,9 @@ def test_incident_type_and_key():
 
 def test_config(tmp_path):
     p = tmp_path / "c.yaml"
-    p.write_text(
-        "hosts:\n  - name: h\n    address: 10.0.0.1\n    checks:\n      - type: memory\n        max_percent: 80\n"
-    )
+    head = "hosts:\n  - name: h\n    address: 10.0.0.1\n    checks:\n"
+    p.write_text(head + "      - type: memory\n        max_percent: 80\n")
     assert load_config(p).hosts[0].checks[0].max_percent == 80.0
-    p.write_text(
-        "hosts:\n  - name: h\n    address: 10.0.0.1\n    checks:\n      - type: memory\n        max_percent: 0\n"
-    )
+    p.write_text(head + "      - type: memory\n        max_percent: 0\n")
     with pytest.raises(ConfigError):
         load_config(p)
