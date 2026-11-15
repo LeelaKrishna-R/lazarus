@@ -36,7 +36,7 @@ def test_it_reads_loadavg_and_nproc_and_judges_the_5_minute_average():
 
 def test_unreadable_output_is_a_failure():
     res = run_check(host(), Check(type="load"), runners={"load": lambda a, u, c, t: (0, "nope")})
-    assert res.ok is False and res.error
+    assert res.ok is False and res.error and res.unknown is True
 
 
 def test_incident_and_config(tmp_path):

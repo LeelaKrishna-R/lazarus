@@ -40,7 +40,7 @@ def test_unreadable_output_is_a_failure():
     res = run_check(
         host(), Check(type="memory"), runners={"memory": lambda a, u, c, t: (0, "nope")}
     )
-    assert res.ok is False and res.error
+    assert res.ok is False and res.error and res.unknown is True
 
 
 def test_incident_type_and_key():

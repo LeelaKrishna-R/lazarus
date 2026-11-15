@@ -65,3 +65,31 @@ def test_intermittent_failure_resets_pending():
     evaluate(st, [ok(chk)], debounce=2, now=1.0)
     assert evaluate(st, [fail(chk)], debounce=2, now=2.0) == []
     assert st.status == "healthy"
+
+
+def disk(path="/"):
+    return Check(type="disk", path=path)
+
+
+def unknown(check):
+    return (check, CheckResult(type=check.type, ok=False, unknown=True, error="ssh: no route"))
+
+
+def test_no_reading_never_opens_a_metric_incident():
+    # An unreachable host can't be measured; that isn't a full disk.
+    st = HostState(name="h")
+    for t in range(3):
+        evaluate(st, [fail(reachable()), unknown(disk())], debounce=2, now=float(t))
+    assert [i.type for i in st.incidents.values()] == ["host_unreachable"]
+    assert st.status == "down"
+
+
+def test_no_reading_does_not_close_an_open_incident():
+    st = HostState(name="h")
+    chk = disk()
+    evaluate(st, [fail(chk)], debounce=2, now=0.0)
+    evaluate(st, [fail(chk)], debounce=2, now=1.0)
+    assert check_key(chk) in st.incidents
+    for t in range(2, 5):
+        assert evaluate(st, [unknown(chk)], debounce=2, now=float(t)) == []
+    assert check_key(chk) in st.incidents

@@ -19,7 +19,7 @@ def disk(**kw):
 
 def test_over_the_limit_is_not_ok():
     res = run_check(host(), disk(max_percent=90), runners={"disk": lambda a, u, c, t: (0, DF)})
-    assert res.ok is False
+    assert res.ok is False and res.unknown is False
     assert res.detail == {"path": "/", "used_percent": 92, "max_percent": 90}
 
 
@@ -43,7 +43,7 @@ def test_unreadable_output_is_a_failure_not_a_pass():
     res = run_check(
         host(), disk(), runners={"disk": lambda a, u, c, t: (1, "df: /nope: No such file")}
     )
-    assert res.ok is False and res.error
+    assert res.ok is False and res.error and res.unknown is True
 
 
 def test_disk_incident_and_key():
@@ -74,3 +74,11 @@ def test_config_defaults_and_bounds(tmp_path):
         )
     with pytest.raises(ConfigError):
         load_config(_write(tmp_path, "      - type: disk\n"))
+
+
+def test_ssh_failure_is_unknown_not_a_full_disk():
+    def runner(address, user, command, timeout):
+        raise OSError("ssh: Could not resolve hostname")
+
+    res = run_check(host(), disk(), runners={"disk": runner})
+    assert res.ok is False and res.unknown is True and "resolve" in res.error

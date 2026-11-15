@@ -19,6 +19,10 @@ class CheckResult:
     latency_ms: float | None = None
     detail: dict = field(default_factory=dict)
     error: str | None = None
+    # True when the check couldn't take a reading at all (SSH failed, output
+    # unreadable). ok stays False so it never counts as a pass, but detection
+    # ignores it: no reading is not proof the disk is full.
+    unknown: bool = False
 
 
 def tcp_connect(address: str, port: int, timeout: float) -> None:
@@ -104,11 +108,15 @@ def _check_disk(host: Host, check: Check, runner: Callable) -> CheckResult:
         command = f"df -P {shlex.quote(check.path or '')}"
         code, output = runner(host.address, host.ssh_user, command, check.timeout_seconds)
     except Exception as exc:
-        return CheckResult(type=check.type, ok=False, detail=detail, error=str(exc))
+        return CheckResult(type=check.type, ok=False, detail=detail, error=str(exc), unknown=True)
     used = _used_percent(output) if code == 0 else None
     if used is None:
         return CheckResult(
-            type=check.type, ok=False, detail=detail, error=output or f"df exited {code}"
+            type=check.type,
+            ok=False,
+            detail=detail,
+            error=output or f"df exited {code}",
+            unknown=True,
         )
     detail.update(used_percent=used, max_percent=check.max_percent)
     return CheckResult(type=check.type, ok=used <= check.max_percent, detail=detail)
@@ -137,10 +145,10 @@ def _check_memory(host: Host, check: Check, runner: Callable) -> CheckResult:
             host.address, host.ssh_user, "cat /proc/meminfo", check.timeout_seconds
         )
     except Exception as exc:
-        return CheckResult(type=check.type, ok=False, error=str(exc))
+        return CheckResult(type=check.type, ok=False, error=str(exc), unknown=True)
     used = _used_memory_percent(output) if code == 0 else None
     if used is None:
-        return CheckResult(type=check.type, ok=False, error=output or f"exit {code}")
+        return CheckResult(type=check.type, ok=False, error=output or f"exit {code}", unknown=True)
     detail = {"used_percent": used, "max_percent": check.max_percent}
     return CheckResult(type=check.type, ok=used <= check.max_percent, detail=detail)
 
@@ -163,10 +171,10 @@ def _check_load(host: Host, check: Check, runner: Callable) -> CheckResult:
             host.address, host.ssh_user, "cat /proc/loadavg; nproc", check.timeout_seconds
         )
     except Exception as exc:
-        return CheckResult(type=check.type, ok=False, error=str(exc))
+        return CheckResult(type=check.type, ok=False, error=str(exc), unknown=True)
     got = _load_percent(output) if code == 0 else None
     if got is None:
-        return CheckResult(type=check.type, ok=False, error=output or f"exit {code}")
+        return CheckResult(type=check.type, ok=False, error=output or f"exit {code}", unknown=True)
     load5, cores, pct = got
     detail = {
         "load_5m": load5,

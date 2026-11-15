@@ -73,6 +73,10 @@ def evaluate(
     events: list[Event] = []
     for check, result in observations:
         key = check_key(check)
+        if result.unknown:
+            # No reading this poll (e.g. the host is unreachable): it can't
+            # confirm a problem or a recovery, so the streak waits for a real one.
+            continue
         if result.ok == state.confirmed_ok.get(key, True):
             state.pending[key] = 0
             continue
