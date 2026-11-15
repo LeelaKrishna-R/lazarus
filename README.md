@@ -4,6 +4,10 @@
 
 **Self-healing monitor for homelab/edge infra — detects failures, auto-remediates, alerts.**
 
+![Two polls of lazarus in dry-run: the first failure is ignored, the second opens three incidents and shows the restart it would run](docs/demo.svg)
+
+A real run of [`docs/demo/config.yaml`](docs/demo/config.yaml), twice. Write-up: [ravuri.dev/work/lazarus](https://www.ravuri.dev/work/lazarus).
+
 `lazarus` polls a list of hosts from a YAML config, decides whether each is
 `healthy` / `degraded` / `down` (with flap-debounce so a single blip is ignored),
 runs a **whitelisted** remediation action when something breaks, and posts a
@@ -37,20 +41,21 @@ build, so a transient blip is ignored. The second consecutive failure opens the
 incidents and (in `--dry-run`) shows the remediation it *would* run:
 
 ```
-$ lazarus run-once --config examples/config.yaml --dry-run   # run 1
-INFO lazarus host friday-nuc: healthy
+$ lazarus run-once --config docs/demo/config.yaml --dry-run
+2026-11-15 11:49:35,913 INFO lazarus host friday-nuc: healthy
 
-$ lazarus run-once --config examples/config.yaml --dry-run   # run 2
-INFO lazarus opened host_unreachable on friday-nuc
-INFO lazarus opened http_unhealthy on friday-nuc
-INFO lazarus opened service_down on friday-nuc
-INFO lazarus.remediation [dry-run] would run on friday-nuc: systemctl restart friday
-INFO lazarus host friday-nuc: down            # exit code 1
+$ lazarus run-once --config docs/demo/config.yaml --dry-run
+2026-11-15 11:49:36,075 INFO lazarus opened host_unreachable on friday-nuc
+2026-11-15 11:49:36,100 INFO lazarus opened http_unhealthy on friday-nuc
+2026-11-15 11:49:36,115 INFO lazarus opened service_down on friday-nuc
+2026-11-15 11:49:36,115 INFO lazarus.remediation [dry-run] would run on friday-nuc: systemctl restart friday
+2026-11-15 11:49:36,115 INFO lazarus host friday-nuc: down
 ```
 
-No real hosts needed — the example points at an unreachable address, so `--dry-run`
-exercises the whole pipeline (checks → debounce → incidents → would-remediate)
-without touching anything.
+No real hosts needed: [`docs/demo/config.yaml`](docs/demo/config.yaml) points at a name that
+never resolves, so `--dry-run` exercises the whole pipeline (checks → debounce →
+incidents → would-remediate) without touching anything. The exit code of the second
+run is `1`.
 
 ## Configuration
 
