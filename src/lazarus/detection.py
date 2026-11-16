@@ -12,6 +12,7 @@ INCIDENT_TYPES = {
     "disk": "disk_full",
     "memory": "memory_high",
     "load": "load_high",
+    "swap": "swap_high",
 }
 
 

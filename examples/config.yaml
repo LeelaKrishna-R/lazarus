@@ -23,6 +23,8 @@ hosts:
         max_percent: 90
       - type: load           # ssh <host> 5-minute load as a percent of its cores
         max_percent: 90
+      - type: swap           # ssh <host> cat /proc/meminfo; swap used past max_percent (no swap = fine)
+        max_percent: 50
     remediation:
       - on: service_down
         service: friday

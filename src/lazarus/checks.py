@@ -56,6 +56,7 @@ DEFAULT_RUNNERS: dict[str, Callable] = {
     "disk": ssh_run,
     "memory": ssh_run,
     "load": ssh_run,
+    "swap": ssh_run,
 }
 
 
@@ -185,6 +186,37 @@ def _check_load(host: Host, check: Check, runner: Callable) -> CheckResult:
     return CheckResult(type=check.type, ok=pct <= check.max_percent, detail=detail)
 
 
+def _swap(meminfo: str) -> tuple[int, int] | None:
+    """(SwapTotal, SwapFree) in kB from /proc/meminfo; None when either is missing."""
+    fields = {}
+    for line in meminfo.splitlines():
+        name, _, rest = line.partition(":")
+        parts = rest.split()
+        if parts and parts[0].isdigit():
+            fields[name.strip()] = int(parts[0])
+    total, free = fields.get("SwapTotal"), fields.get("SwapFree")
+    return None if total is None or free is None else (total, free)
+
+
+def _check_swap(host: Host, check: Check, runner: Callable) -> CheckResult:
+    try:
+        code, output = runner(
+            host.address, host.ssh_user, "cat /proc/meminfo", check.timeout_seconds
+        )
+    except Exception as exc:
+        return CheckResult(type=check.type, ok=False, error=str(exc), unknown=True)
+    swap = _swap(output) if code == 0 else None
+    if swap is None:
+        return CheckResult(type=check.type, ok=False, error=output or f"exit {code}", unknown=True)
+    total, free = swap
+    if total == 0:
+        # A box with no swap can't fill it; memory pressure there is the memory check's to see.
+        return CheckResult(type=check.type, ok=True, detail={"swap": "none"})
+    used = round((total - free) * 100 / total)
+    detail = {"used_percent": used, "max_percent": check.max_percent}
+    return CheckResult(type=check.type, ok=used <= check.max_percent, detail=detail)
+
+
 _DISPATCH: dict[str, Callable[[Host, Check, Callable], CheckResult]] = {
     "reachable": _check_reachable,
     "http_health": _check_http,
@@ -192,6 +224,7 @@ _DISPATCH: dict[str, Callable[[Host, Check, Callable], CheckResult]] = {
     "disk": _check_disk,
     "memory": _check_memory,
     "load": _check_load,
+    "swap": _check_swap,
 }
 
 

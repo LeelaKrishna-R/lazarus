@@ -88,6 +88,8 @@ hosts:
         max_percent: 90
       - type: load           # ssh <host> 5-minute load as a percent of its cores (100 = load equals cores)
         max_percent: 90
+      - type: swap           # ssh <host> cat /proc/meminfo; SwapTotal less SwapFree past max_percent
+        max_percent: 50      # a box with no swap passes; the memory check covers it
     remediation:
       - on: service_down
         service: friday
@@ -130,7 +132,6 @@ database, no HA/clustering, no plugins. It is a focused tool, not a platform.
 ## Roadmap
 
 - Prometheus metrics exporter
-- A threshold on swap use (disk, memory and load shipped as `type: disk`, `memory` and `load`)
 - Read-only web status page
 - Pluggable remediation handlers
 - Async polling for large fleets

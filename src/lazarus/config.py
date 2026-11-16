@@ -65,6 +65,7 @@ _REQUIRED_FIELD = {
     "disk": "path",
     "memory": None,
     "load": None,
+    "swap": None,
 }
 
 
