@@ -29,10 +29,13 @@ lazarus run-once --config examples/config.yaml --dry-run
 
 # Run continuously on the configured interval:
 lazarus daemon --config examples/config.yaml
+
+# What the last poll found, without polling again (reads the state file):
+lazarus status
 ```
 
 Exit codes (handy for cron): `0` all healthy · `1` one or more open incidents ·
-`2` config/usage error.
+`2` config/usage error (for `status`: no readable state file yet).
 
 ## Demo
 

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import json
 import logging
 import sys
 import time
@@ -49,13 +50,51 @@ def run_cycle(
     return 1 if any_incident else 0
 
 
+def _when(epoch: float) -> str:
+    return datetime.fromtimestamp(epoch, UTC).strftime("%Y-%m-%d %H:%M:%SZ")
+
+
+def show_status(state_path: Path, out=sys.stdout) -> int:
+    """The last poll as the state file has it, without polling anything.
+
+    Prints each host's status and its open incidents. Returns 0 when nothing is
+    open, 1 when something is, 2 when there's no readable state yet.
+    """
+    try:
+        data = json.loads(state_path.read_text())
+        hosts = data["hosts"]
+    except FileNotFoundError:
+        print(f"no state at {state_path} yet; run `lazarus run-once` first", file=out)
+        return 2
+    except (OSError, ValueError, KeyError, TypeError) as exc:
+        print(f"can't read {state_path}: {exc}", file=out)
+        return 2
+    print(f"last poll: {data.get('timestamp') or 'unknown'}", file=out)
+    open_any = False
+    for host in hosts:
+        print(f"{host.get('name')}: {host.get('status', 'unknown')}", file=out)
+        for inc in host.get("open_incidents", []):
+            open_any = True
+            target = f" ({inc['target']})" if inc.get("target") else ""
+            reason = f": {inc['reason']}" if inc.get("reason") else ""
+            tries = f", {inc['attempts']} remediation attempt(s)" if inc.get("attempts") else ""
+            since = _when(inc["opened_at"])
+            print(f"  open {inc.get('type')}{target}{reason} since {since}{tries}", file=out)
+    return 1 if open_any else 0
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="lazarus")
-    parser.add_argument("command", choices=["run-once", "daemon"])
-    parser.add_argument("--config", required=True)
+    parser.add_argument("command", choices=["run-once", "daemon", "status"])
+    parser.add_argument("--config")
     parser.add_argument("--dry-run", action="store_true")
     parser.add_argument("--state", default=str(STATE_PATH))
     args = parser.parse_args(argv)
+
+    if args.command == "status":  # reads the state file only; needs no config
+        return show_status(Path(args.state))
+    if not args.config:
+        parser.error("--config is required for run-once and daemon")
 
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s %(message)s")
 
