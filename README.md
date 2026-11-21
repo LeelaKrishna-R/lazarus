@@ -32,10 +32,20 @@ lazarus daemon --config examples/config.yaml
 
 # What the last poll found, without polling again (reads the state file):
 lazarus status
+
+# The same as Prometheus text, for node_exporter's textfile collector:
+lazarus metrics > /var/lib/node_exporter/textfile/lazarus.prom.tmp &&
+  mv /var/lib/node_exporter/textfile/lazarus.prom.tmp /var/lib/node_exporter/textfile/lazarus.prom
 ```
 
 Exit codes (handy for cron): `0` all healthy · `1` one or more open incidents ·
 `2` config/usage error (for `status`: no readable state file yet).
+
+`metrics` exits `0` when it read the state and `2` when it couldn't. It prints
+`lazarus_state_readable 0` in that case rather than nothing, so you can alert on it.
+The gauges are `lazarus_host_healthy{host}`, `lazarus_open_incidents{host,type}`,
+`lazarus_remediation_attempts{host,type}` and `lazarus_last_poll_timestamp_seconds`.
+Alert on `time() - lazarus_last_poll_timestamp_seconds` to catch a poller that has stopped.
 
 ## Demo
 
@@ -134,7 +144,7 @@ database, no HA/clustering, no plugins. It is a focused tool, not a platform.
 
 ## Roadmap
 
-- Prometheus metrics exporter
+- Prometheus metrics over HTTP (`lazarus metrics` covers the textfile collector today)
 - Read-only web status page
 - Pluggable remediation handlers
 - Async polling for large fleets

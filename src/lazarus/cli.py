@@ -12,6 +12,7 @@ from lazarus.alerter import format_alert, send_alert
 from lazarus.checks import run_check
 from lazarus.config import Config, ConfigError, load_config
 from lazarus.detection import HostState, evaluate
+from lazarus.metrics import render as render_metrics
 from lazarus.remediation import find_rule, remediate, should_remediate
 from lazarus.state import load_state, write_state
 
@@ -83,9 +84,24 @@ def show_status(state_path: Path, out=sys.stdout) -> int:
     return 1 if open_any else 0
 
 
+def show_metrics(state_path: Path, out=sys.stdout) -> int:
+    """The last poll as Prometheus text (lazarus.metrics), without polling anything.
+
+    Returns 0 when the state was read, 2 when it wasn't; the text is printed either way.
+    """
+    try:
+        data = json.loads(state_path.read_text())
+        if not isinstance(data, dict) or not isinstance(data.get("hosts"), list):
+            raise ValueError("no hosts list")
+    except (OSError, ValueError):
+        data = None
+    out.write(render_metrics(data))
+    return 0 if data is not None else 2
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="lazarus")
-    parser.add_argument("command", choices=["run-once", "daemon", "status"])
+    parser.add_argument("command", choices=["run-once", "daemon", "status", "metrics"])
     parser.add_argument("--config")
     parser.add_argument("--dry-run", action="store_true")
     parser.add_argument("--state", default=str(STATE_PATH))
@@ -93,6 +109,8 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.command == "status":  # reads the state file only; needs no config
         return show_status(Path(args.state))
+    if args.command == "metrics":
+        return show_metrics(Path(args.state))
     if not args.config:
         parser.error("--config is required for run-once and daemon")
 
