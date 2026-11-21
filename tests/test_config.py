@@ -221,3 +221,36 @@ def test_host_with_no_checks_is_rejected(tmp_path):
     )
     with pytest.raises(ConfigError, match="no checks"):
         load_config(p)
+
+
+def _remediating(tmp_path, on, check="service"):
+    extra = "\n        name: web" if check == "service" else ""
+    path = tmp_path / "c.yaml"
+    path.write_text(
+        f"""
+hosts:
+  - name: web
+    address: 10.0.0.5
+    checks:
+      - type: {check}{extra}
+    remediation:
+      - on: {on}
+        action: "systemctl restart web"
+"""
+    )
+    return path
+
+
+def test_a_remediation_on_an_incident_that_doesnt_exist_is_refused(tmp_path):
+    with pytest.raises(ConfigError, match="remediation 'on' must be one of .*got 'service_dwn'"):
+        load_config(_remediating(tmp_path, "service_dwn"))
+
+
+def test_a_remediation_no_check_on_the_host_can_open_is_refused(tmp_path):
+    with pytest.raises(ConfigError, match="remediation on 'disk_full' can never run"):
+        load_config(_remediating(tmp_path, "disk_full"))
+
+
+def test_a_remediation_its_check_opens_loads(tmp_path):
+    cfg = load_config(_remediating(tmp_path, "service_down"))
+    assert cfg.hosts[0].remediation[0].on == "service_down"

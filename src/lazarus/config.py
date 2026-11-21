@@ -100,6 +100,19 @@ def _int_field(raw: dict, key: str, default: int, *, minimum: int) -> int:
     return value
 
 
+# The incident each check type opens when it fails: lazarus.detection opens them, and a
+# remediation's `on` names one.
+INCIDENT_TYPES = {
+    "reachable": "host_unreachable",
+    "http_health": "http_unhealthy",
+    "service": "service_down",
+    "disk": "disk_full",
+    "memory": "memory_high",
+    "load": "load_high",
+    "swap": "swap_high",
+}
+
+
 def _parse_check(raw: dict) -> Check:
     ctype = raw.get("type")
     if ctype not in _REQUIRED_FIELD:
@@ -132,6 +145,10 @@ def _parse_remediation(raw: dict) -> Remediation:
         raise ConfigError("remediation requires an 'on' field")
     if raw.get("action") is None:
         raise ConfigError("remediation requires an 'action' field")
+    if on not in INCIDENT_TYPES.values():
+        # a typo here ("service_dwn") matched no incident, so the remediation silently never ran
+        known = ", ".join(sorted(INCIDENT_TYPES.values()))
+        raise ConfigError(f"remediation 'on' must be one of {known}, got {on!r}")
     return Remediation(
         on=on,
         action=raw["action"],
@@ -149,6 +166,13 @@ def _parse_host(raw: dict) -> Host:
     if not checks:
         raise ConfigError(f"host {raw['name']!r} has no checks")
     remediation = [_parse_remediation(r) for r in raw.get("remediation", [])]
+    opened = {INCIDENT_TYPES[c.type] for c in checks}
+    for rule in remediation:
+        if rule.on not in opened:
+            raise ConfigError(
+                f"host {raw['name']!r}: remediation on {rule.on!r} can never run, "
+                f"no check on this host opens that incident"
+            )
     return Host(
         name=raw["name"],
         address=raw["address"],

@@ -111,6 +111,11 @@ hosts:
         cooldown_seconds: 300
 ```
 
+A remediation's `on` is the incident it answers: `host_unreachable`, `http_unhealthy`,
+`service_down`, `disk_full`, `memory_high`, `load_high` or `swap_high`. The config is
+refused if `on` is anything else, or names an incident no check on that host opens,
+because either way the action could never run.
+
 ## Example alert
 
 ```

@@ -3,17 +3,9 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 
 from lazarus.checks import CheckResult
-from lazarus.config import Check
+from lazarus.config import INCIDENT_TYPES, Check
 
-INCIDENT_TYPES = {
-    "reachable": "host_unreachable",
-    "http_health": "http_unhealthy",
-    "service": "service_down",
-    "disk": "disk_full",
-    "memory": "memory_high",
-    "load": "load_high",
-    "swap": "swap_high",
-}
+__all__ = ["INCIDENT_TYPES"]
 
 
 @dataclass
