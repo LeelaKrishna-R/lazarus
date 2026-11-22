@@ -99,9 +99,34 @@ def show_metrics(state_path: Path, out=sys.stdout) -> int:
     return 0 if data is not None else 2
 
 
+def check_config(path: str, out=None) -> int:
+    """Load and validate the config the way run-once would, poll nothing, and say what it found.
+
+    Exit 0 when it is valid, 2 when it isn't (the error is printed), so CI or a deploy can
+    run it first."""
+    out = out or sys.stdout
+    try:
+        config = load_config(path)
+    except (ConfigError, OSError) as exc:
+        print(f"config error: {exc}", file=out)
+        return 2
+    checks = sum(len(h.checks) for h in config.hosts)
+    fixes = sum(len(h.remediation) for h in config.hosts)
+    print(
+        f"config ok: {len(config.hosts)} host(s), {checks} check(s), {fixes} remediation(s), "
+        f"poll every {config.poll_interval_seconds:g}s, debounce {config.debounce}",
+        file=out,
+    )
+    if not config.alerting.webhook:
+        print("no alerting webhook: state changes are only logged", file=out)
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="lazarus")
-    parser.add_argument("command", choices=["run-once", "daemon", "status", "metrics"])
+    parser.add_argument(
+        "command", choices=["run-once", "daemon", "status", "metrics", "check-config"]
+    )
     parser.add_argument("--config")
     parser.add_argument("--dry-run", action="store_true")
     parser.add_argument("--state", default=str(STATE_PATH))
@@ -112,7 +137,9 @@ def main(argv: list[str] | None = None) -> int:
     if args.command == "metrics":
         return show_metrics(Path(args.state))
     if not args.config:
-        parser.error("--config is required for run-once and daemon")
+        parser.error("--config is required for run-once, daemon and check-config")
+    if args.command == "check-config":
+        return check_config(args.config)
 
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s %(message)s")
 

@@ -30,6 +30,9 @@ lazarus run-once --config examples/config.yaml --dry-run
 # Run continuously on the configured interval:
 lazarus daemon --config examples/config.yaml
 
+# Check a config before you run it (polls nothing; exit 2 and the reason if it's invalid):
+lazarus check-config --config examples/config.yaml
+
 # What the last poll found, without polling again (reads the state file):
 lazarus status
 
