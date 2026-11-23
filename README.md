@@ -90,6 +90,7 @@ hosts:
   - name: friday-nuc
     address: friday.example.com
     ssh_user: krishna
+    ssh_port: 22             # optional: the port service/disk/memory/load/swap checks and remediations ssh to
     checks:
       - type: reachable      # TCP connect
         port: 7777

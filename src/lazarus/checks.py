@@ -38,15 +38,22 @@ def http_get_status(url: str, timeout: float) -> int:
         return exc.code
 
 
-def ssh_run(address: str, user: str | None, command: str, timeout: float) -> tuple[int, str]:
+def ssh_run(
+    address: str, user: str | None, command: str, timeout: float, port: int | None = None
+) -> tuple[int, str]:
     target = f"{user}@{address}" if user else address
     proc = subprocess.run(
-        ["ssh", "-o", "BatchMode=yes", target, command],
+        ["ssh", "-o", "BatchMode=yes", *(["-p", str(port)] if port else []), target, command],
         capture_output=True,
         text=True,
         timeout=timeout,
     )
     return proc.returncode, (proc.stdout or proc.stderr).strip()
+
+
+def ssh_options(host: Host) -> dict:
+    """The keyword a runner gets only when the host sets one, so a runner without it still works."""
+    return {"port": host.ssh_port} if host.ssh_port else {}
 
 
 DEFAULT_RUNNERS: dict[str, Callable] = {
@@ -86,7 +93,9 @@ def _check_http(host: Host, check: Check, runner: Callable) -> CheckResult:
 def _check_service(host: Host, check: Check, runner: Callable) -> CheckResult:
     try:
         command = f"systemctl is-active {shlex.quote(check.name or '')}"
-        code, output = runner(host.address, host.ssh_user, command, check.timeout_seconds)
+        code, output = runner(
+            host.address, host.ssh_user, command, check.timeout_seconds, **ssh_options(host)
+        )
     except Exception as exc:
         return CheckResult(type=check.type, ok=False, detail={"name": check.name}, error=str(exc))
     return CheckResult(type=check.type, ok=code == 0, detail={"name": check.name, "output": output})
@@ -107,7 +116,9 @@ def _check_disk(host: Host, check: Check, runner: Callable) -> CheckResult:
     detail = {"path": check.path}
     try:
         command = f"df -P {shlex.quote(check.path or '')}"
-        code, output = runner(host.address, host.ssh_user, command, check.timeout_seconds)
+        code, output = runner(
+            host.address, host.ssh_user, command, check.timeout_seconds, **ssh_options(host)
+        )
     except Exception as exc:
         return CheckResult(type=check.type, ok=False, detail=detail, error=str(exc), unknown=True)
     used = _used_percent(output) if code == 0 else None
@@ -143,7 +154,11 @@ def _used_memory_percent(meminfo: str) -> int | None:
 def _check_memory(host: Host, check: Check, runner: Callable) -> CheckResult:
     try:
         code, output = runner(
-            host.address, host.ssh_user, "cat /proc/meminfo", check.timeout_seconds
+            host.address,
+            host.ssh_user,
+            "cat /proc/meminfo",
+            check.timeout_seconds,
+            **ssh_options(host),
         )
     except Exception as exc:
         return CheckResult(type=check.type, ok=False, error=str(exc), unknown=True)
@@ -169,7 +184,11 @@ def _load_percent(output: str) -> tuple[float, int, int] | None:
 def _check_load(host: Host, check: Check, runner: Callable) -> CheckResult:
     try:
         code, output = runner(
-            host.address, host.ssh_user, "cat /proc/loadavg; nproc", check.timeout_seconds
+            host.address,
+            host.ssh_user,
+            "cat /proc/loadavg; nproc",
+            check.timeout_seconds,
+            **ssh_options(host),
         )
     except Exception as exc:
         return CheckResult(type=check.type, ok=False, error=str(exc), unknown=True)
@@ -201,7 +220,11 @@ def _swap(meminfo: str) -> tuple[int, int] | None:
 def _check_swap(host: Host, check: Check, runner: Callable) -> CheckResult:
     try:
         code, output = runner(
-            host.address, host.ssh_user, "cat /proc/meminfo", check.timeout_seconds
+            host.address,
+            host.ssh_user,
+            "cat /proc/meminfo",
+            check.timeout_seconds,
+            **ssh_options(host),
         )
     except Exception as exc:
         return CheckResult(type=check.type, ok=False, error=str(exc), unknown=True)

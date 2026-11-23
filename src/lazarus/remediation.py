@@ -4,7 +4,7 @@ import logging
 from collections.abc import Callable
 from dataclasses import dataclass
 
-from lazarus.checks import ssh_run
+from lazarus.checks import ssh_options, ssh_run
 from lazarus.config import Host, Remediation
 from lazarus.detection import Incident
 
@@ -55,7 +55,9 @@ def remediate(
     incident.attempts += 1
     incident.last_attempt = now
     try:
-        code, output = runner(host.address, host.ssh_user, rule.action, SSH_TIMEOUT)
+        code, output = runner(
+            host.address, host.ssh_user, rule.action, SSH_TIMEOUT, **ssh_options(host)
+        )
     except Exception as exc:
         logger.warning("remediation failed on %s: %s", host.name, exc)
         return RemediationResult(executed=False, command=rule.action, output=str(exc))

@@ -42,6 +42,7 @@ class Host:
     checks: list[Check]
     remediation: list[Remediation] = field(default_factory=list)
     ssh_user: str | None = None
+    ssh_port: int | None = None
 
 
 @dataclass
@@ -179,7 +180,17 @@ def _parse_host(raw: dict) -> Host:
         checks=checks,
         remediation=remediation,
         ssh_user=raw.get("ssh_user"),
+        ssh_port=_ssh_port(raw),
     )
+
+
+def _ssh_port(raw: dict) -> int | None:
+    if raw.get("ssh_port") is None:
+        return None
+    port = _int_field(raw, "ssh_port", 22, minimum=1)
+    if port > 65535:
+        raise ConfigError(f"ssh_port must be <= 65535, got {port}")
+    return port
 
 
 def load_config(path: str | Path) -> Config:
