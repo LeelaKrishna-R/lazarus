@@ -41,6 +41,9 @@ lazarus metrics > /var/lib/node_exporter/textfile/lazarus.prom.tmp &&
   mv /var/lib/node_exporter/textfile/lazarus.prom.tmp /var/lib/node_exporter/textfile/lazarus.prom
 ```
 
+Where only the package is on the path (no `lazarus` script), `python -m lazarus …` takes the
+same commands.
+
 Exit codes (handy for cron): `0` all healthy · `1` one or more open incidents ·
 `2` config/usage error (for `status`: no readable state file yet).
 
