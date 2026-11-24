@@ -98,6 +98,7 @@ hosts:
       - type: http_health    # GET, 2xx = healthy
         url: https://friday.example.com/health
         timeout_seconds: 5
+        # expect_status: [200, 401]   # optional: these codes count as healthy instead (e.g. behind auth)
       - type: service        # ssh <host> systemctl is-active <name>
         name: friday
         timeout_seconds: 10

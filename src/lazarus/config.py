@@ -24,6 +24,8 @@ class Check:
     name: str | None = None
     path: str | None = None
     max_percent: float = 90.0
+    # http_health: the status codes that mean healthy; None is any 2xx
+    expect_status: tuple[int, ...] | None = None
 
 
 @dataclass
@@ -129,7 +131,24 @@ def _parse_check(raw: dict) -> Check:
         name=raw.get("name"),
         path=raw.get("path"),
         max_percent=_percent_field(raw, "max_percent", 90.0),
+        expect_status=_status_field(raw),
     )
+
+
+def _status_field(raw: dict) -> tuple[int, ...] | None:
+    """expect_status: one code or a list, e.g. 401 for a health URL behind auth.
+    Redirects are followed before the status is read, so a 3xx is never seen."""
+    v = raw.get("expect_status")
+    if v is None:
+        return None
+    codes = v if isinstance(v, list) else [v]
+    try:
+        out = tuple(int(c) for c in codes)
+    except (TypeError, ValueError):
+        raise ConfigError(f"expect_status must be HTTP status codes, got {v!r}") from None
+    if not out or any(not 100 <= c <= 599 for c in out):
+        raise ConfigError(f"expect_status must be HTTP status codes (100-599), got {v!r}")
+    return out
 
 
 def _percent_field(raw: dict, key: str, default: float) -> float:

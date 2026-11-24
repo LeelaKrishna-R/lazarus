@@ -86,7 +86,10 @@ def _check_http(host: Host, check: Check, runner: Callable) -> CheckResult:
         return CheckResult(type=check.type, ok=False, error=str(exc))
     latency = round((time.monotonic() - start) * 1000, 1)
     return CheckResult(
-        type=check.type, ok=200 <= status < 300, latency_ms=latency, detail={"status_code": status}
+        type=check.type,
+        ok=(status in check.expect_status) if check.expect_status else 200 <= status < 300,
+        latency_ms=latency,
+        detail={"status_code": status},
     )
 
 

@@ -79,3 +79,10 @@ def test_service_name_is_shell_quoted():
 
     run_check(host(), Check(type="service", name="evil; rm -rf /"), runners={"service": runner})
     assert captured["command"] == "systemctl is-active 'evil; rm -rf /'"
+
+
+def test_http_health_expect_status_is_what_counts_as_healthy():
+    check = Check(type="http_health", url="http://x/health", expect_status=(200, 401))
+    for status, ok in ((401, True), (200, True), (204, False), (503, False)):
+        res = run_check(host(), check, runners={"http_health": lambda url, timeout, s=status: s})
+        assert res.ok is ok, status

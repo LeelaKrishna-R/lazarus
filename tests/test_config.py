@@ -254,3 +254,29 @@ def test_a_remediation_no_check_on_the_host_can_open_is_refused(tmp_path):
 def test_a_remediation_its_check_opens_loads(tmp_path):
     cfg = load_config(_remediating(tmp_path, "service_down"))
     assert cfg.hosts[0].remediation[0].on == "service_down"
+
+
+def test_expect_status_one_code_or_a_list(tmp_path):
+    def cfg(line):
+        return write(
+            tmp_path,
+            f"""
+        hosts:
+          - name: web
+            address: 10.0.0.1
+            checks:
+              - type: http_health
+                url: http://10.0.0.1/health
+                {line}
+        """,
+        )
+
+    assert load_config(cfg("expect_status: 401")).hosts[0].checks[0].expect_status == (401,)
+    assert load_config(cfg("expect_status: [200, 401]")).hosts[0].checks[0].expect_status == (
+        200,
+        401,
+    )
+    assert load_config(cfg("")).hosts[0].checks[0].expect_status is None
+    for bad in ("expect_status: ok", "expect_status: 42", "expect_status: []"):
+        with pytest.raises(ConfigError, match="expect_status"):
+            load_config(cfg(bad))
