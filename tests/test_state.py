@@ -59,3 +59,12 @@ def test_load_state_ignores_corrupt_file(tmp_path):
     path = tmp_path / "state.json"
     path.write_text("{ this is not valid json")
     assert load_state(path) == {}
+
+
+def test_a_corrupt_state_file_is_kept_aside_not_overwritten(tmp_path):
+    path = tmp_path / "state.json"
+    path.write_text("{ this is not valid json")
+    assert load_state(path) == {}
+    kept = list(tmp_path.glob("state.json.corrupt-*"))
+    assert len(kept) == 1 and kept[0].read_text() == "{ this is not valid json"
+    assert not path.exists()

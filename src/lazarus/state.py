@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import logging
 import os
+import time
 from dataclasses import asdict
 from pathlib import Path
 
@@ -58,5 +59,14 @@ def load_state(path: str | Path) -> dict[str, HostState]:
             states[host["name"]] = state
         return states
     except (OSError, ValueError, KeyError, TypeError) as exc:
-        logger.warning("ignoring unreadable state file %s: %s", path, exc)
+        # Recover, as before, but keep the bad file: the next save would otherwise overwrite the
+        # only record of which incidents were open and how often each remediation had run.
+        kept = path.with_name(f"{path.name}.corrupt-{int(time.time())}")
+        try:
+            os.replace(path, kept)
+            logger.warning(
+                "unreadable state file %s (%s); kept it as %s and started fresh", path, exc, kept
+            )
+        except OSError:
+            logger.warning("ignoring unreadable state file %s: %s", path, exc)
         return {}
